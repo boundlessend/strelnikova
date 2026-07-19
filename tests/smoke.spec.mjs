@@ -17,7 +17,8 @@ test("старт, пауза, продолжение и сброс", async ({ pa
 
   await page.click("#startBtn");
   await expect(page.locator("#phase")).toHaveText("Ладошки");
-  await expect(page.locator("#bigNumber")).toHaveText("3", { timeout: 5000 });
+  // не toHaveText("3"): значение живёт 400 мс и опрос с бэкоффом его проскакивает на медленном CI
+  await page.waitForFunction(() => Number(document.querySelector("#bigNumber").textContent) >= 3, null, { timeout: 5000 });
 
   await page.click("#startBtn");
   await expect(page.locator("#startBtn")).toHaveText("Продолжить");
