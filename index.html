@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Стрельникова</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#0f1115">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Дыхание">
+<link rel="apple-touch-icon" href="./icon-180.png">
+<link rel="icon" href="./icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #191c22;
+    --panel-2: #22262e;
+    --text: #eef1f6;
+    --muted: #8b93a1;
+    --accent: #4cc2ff;
+    --accent-2: #2e7d5b;
+    --danger: #d9534f;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  header {
+    padding: 14px 18px 6px;
+    text-align: center;
+  }
+  header h1 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: .3px; color: var(--muted); }
+
+  /* основной дисплей счёта */
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 8px;
+  }
+  #phase { font-size: 20px; font-weight: 600; color: var(--muted); min-height: 26px; }
+  #phase.count { color: var(--accent); }
+  #phase.pause { color: var(--accent-2); }
+  #bigNumber {
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+    font-size: clamp(96px, 42vw, 260px);
+    line-height: 1;
+    transition: transform .06s ease;
+  }
+  #bigNumber.pulse { transform: scale(1.06); }
+  #bigNumber.accent { color: var(--accent); }
+  #seriesInfo { font-size: 16px; color: var(--muted); min-height: 22px; }
+
+  /* точки прогресса серии */
+  #dots {
+    display: grid;
+    grid-template-columns: repeat(16, 1fr);
+    gap: 5px;
+    width: min(92vw, 460px);
+    margin-top: 6px;
+  }
+  .dot { aspect-ratio: 1; border-radius: 50%; background: var(--panel-2); }
+  .dot.on { background: var(--accent); }
+
+  /* кнопки управления */
+  .controls {
+    display: flex;
+    gap: 12px;
+    padding: 10px 16px;
+    justify-content: center;
+  }
+  button {
+    font-family: inherit;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    background: var(--panel);
+    border: 1px solid #2c3038;
+    border-radius: 14px;
+    padding: 16px 22px;
+    min-width: 120px;
+    cursor: pointer;
+  }
+  button:active { transform: scale(.97); }
+  #startBtn { background: var(--accent); color: #04121c; border-color: transparent; flex: 1; max-width: 260px; }
+  #startBtn.running { background: var(--danger); color: #fff; }
+  #resetBtn { background: var(--panel); }
+
+  /* настройки */
+  details {
+    background: var(--panel);
+    border-top: 1px solid #23262d;
+  }
+  summary {
+    padding: 16px 18px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+    list-style: none;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: "⚙︎ настройки"; }
+  details[open] summary::after { content: "✕ закрыть"; }
+  .settings { padding: 0 18px 20px; display: flex; flex-direction: column; gap: 20px; }
+  .field { display: flex; flex-direction: column; gap: 8px; }
+  .field .label { display: flex; justify-content: space-between; font-size: 15px; }
+  .field .label b { color: var(--accent); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+  .row { display: flex; gap: 10px; align-items: center; justify-content: space-between; font-size: 15px; }
+  .switch { position: relative; width: 52px; height: 30px; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; inset: 0; background: var(--panel-2); border-radius: 30px; transition: .2s; }
+  .slider::before { content: ""; position: absolute; width: 24px; height: 24px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s; }
+  .switch input:checked + .slider { background: var(--accent); }
+  .switch input:checked + .slider::before { transform: translateX(22px); }
+  .hint { font-size: 12px; color: var(--muted); line-height: 1.4; }
+</style>
+</head>
+<body>
+  <header><h1>Дыхательная гимнастика Стрельниковой</h1></header>
+
+  <main>
+    <div id="phase">готов</div>
+    <div id="bigNumber">0</div>
+    <div id="seriesInfo"></div>
+    <div id="dots"></div>
+  </main>
+
+  <div class="controls">
+    <button id="startBtn">Старт</button>
+    <button id="resetBtn">Сброс</button>
+  </div>
+
+  <details>
+    <summary></summary>
+    <div class="settings">
+      <div class="field">
+        <div class="label"><span>Темп (вдохов в минуту)</span><b id="bpmVal">60</b></div>
+        <input type="range" id="bpm" min="30" max="150" step="5" value="60">
+        <div class="hint">как быстро идёт счёт раз-два-три. Стрельникова обычно ~60-80</div>
+      </div>
+      <div class="field">
+        <div class="label"><span>Счётов в серии</span><b id="countsVal">32</b></div>
+        <input type="range" id="counts" min="8" max="96" step="8" value="32">
+      </div>
+      <div class="field">
+        <div class="label"><span>Пауза между сериями (сек)</span><b id="pauseVal">5</b></div>
+        <input type="range" id="pause" min="0" max="30" step="1" value="5">
+      </div>
+      <div class="field">
+        <div class="label"><span>Число серий</span><b id="seriesVal">3</b></div>
+        <input type="range" id="series" min="1" max="12" step="1" value="3">
+        <div class="hint">на максимуме справа - без ограничения (∞), идёт пока не остановишь</div>
+      </div>
+      <div class="row">
+        <span>Звук метронома</span>
+        <label class="switch"><input type="checkbox" id="sound" checked><span class="slider"></span></label>
+      </div>
+      <div class="row">
+        <span>Голосовой счёт (говорит число)</span>
+        <label class="switch"><input type="checkbox" id="voice"><span class="slider"></span></label>
+      </div>
+      <div class="hint">голос на iPhone может слегка отставать при быстром темпе - если мешает, оставь только звук метронома. Экран во время упражнения не гаснет.</div>
+    </div>
+  </details>
+
+<script>
+"use strict";
+
+// ключ хранилища настроек
+const STORE_KEY = "strelnikova.settings.v1";
+
+// настройки по умолчанию
+const defaults = {
+  bpm: 60,
+  counts: 32,
+  pauseSec: 5,
+  seriesLimit: 3,   // 13 в UI трактуем как бесконечность
+  sound: true,
+  voice: false,
+};
+
+// текущее состояние выполнения
+const run = {
+  active: false,
+  phase: "idle",   // idle | count | pause
+  count: 0,
+  series: 0,
+  pauseLeft: 0,
+};
+
+let beatTimer = null;
+let pauseTimer = null;
+let nextBeatAt = 0;
+let audioCtx = null;
+let wakeLock = null;
+
+const SERIES_MAX = 12;              // соответствует max у ползунка
+const INFINITE = SERIES_MAX + 1;    // положение "без ограничения"
+
+// элементы
+const el = {
+  phase: document.getElementById("phase"),
+  big: document.getElementById("bigNumber"),
+  seriesInfo: document.getElementById("seriesInfo"),
+  dots: document.getElementById("dots"),
+  startBtn: document.getElementById("startBtn"),
+  resetBtn: document.getElementById("resetBtn"),
+  bpm: document.getElementById("bpm"),
+  counts: document.getElementById("counts"),
+  pause: document.getElementById("pause"),
+  series: document.getElementById("series"),
+  sound: document.getElementById("sound"),
+  voice: document.getElementById("voice"),
+  bpmVal: document.getElementById("bpmVal"),
+  countsVal: document.getElementById("countsVal"),
+  pauseVal: document.getElementById("pauseVal"),
+  seriesVal: document.getElementById("seriesVal"),
+};
+
+// загрузка настроек из localStorage
+function loadSettings() {
+  const raw = localStorage.getItem(STORE_KEY);
+  const s = raw ? { ...defaults, ...JSON.parse(raw) } : { ...defaults };
+  el.bpm.value = String(s.bpm);
+  el.counts.value = String(s.counts);
+  el.pause.value = String(s.pauseSec);
+  el.series.value = String(s.seriesLimit >= INFINITE ? SERIES_MAX + 1 : s.seriesLimit);
+  el.sound.checked = s.sound;
+  el.voice.checked = s.voice;
+  syncLabels();
+}
+
+// чтение настроек из полей формы
+function readSettings() {
+  const seriesRaw = Number(el.series.value);
+  return {
+    bpm: Number(el.bpm.value),
+    counts: Number(el.counts.value),
+    pauseSec: Number(el.pause.value),
+    seriesLimit: seriesRaw > SERIES_MAX ? INFINITE : seriesRaw,
+    sound: el.sound.checked,
+    voice: el.voice.checked,
+  };
+}
+
+// сохранение настроек
+function saveSettings() {
+  localStorage.setItem(STORE_KEY, JSON.stringify(readSettings()));
+}
+
+// обновление подписей у ползунков
+function syncLabels() {
+  el.bpmVal.textContent = el.bpm.value;
+  el.countsVal.textContent = el.counts.value;
+  el.pauseVal.textContent = el.pause.value;
+  const s = Number(el.series.value);
+  el.seriesVal.textContent = s > SERIES_MAX ? "∞" : String(s);
+}
+
+// построение точек прогресса под текущее число счётов
+function buildDots(total) {
+  el.dots.innerHTML = "";
+  for (let i = 0; i < total; i++) {
+    const d = document.createElement("div");
+    d.className = "dot";
+    el.dots.appendChild(d);
+  }
+}
+
+// подсветка точек до текущего счёта
+function paintDots(upto) {
+  const nodes = el.dots.children;
+  for (let i = 0; i < nodes.length; i++) {
+    nodes[i].classList.toggle("on", i < upto);
+  }
+}
+
+// короткий щелчок метронома через Web Audio, accent - акцент на первом счёте
+function playClick(accent) {
+  if (!audioCtx) return;
+  const t = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.frequency.value = accent ? 1050 : 720;
+  osc.type = "square";
+  gain.gain.setValueAtTime(0.0001, t);
+  gain.gain.exponentialRampToValueAtTime(accent ? 0.5 : 0.32, t + 0.005);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(t);
+  osc.stop(t + 0.1);
+}
+
+// произнести число голосом
+function speak(n) {
+  if (!("speechSynthesis" in window)) return;
+  const u = new SpeechSynthesisUtterance(String(n));
+  u.lang = "ru-RU";
+  u.rate = 1.1;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(u);
+}
+
+// запрос удержания экрана
+async function acquireWakeLock() {
+  try {
+    if ("wakeLock" in navigator) {
+      wakeLock = await navigator.wakeLock.request("screen");
+    }
+  } catch (_) { /* удержание недоступно - не критично */ }
+}
+async function releaseWakeLock() {
+  try { if (wakeLock) { await wakeLock.release(); wakeLock = null; } } catch (_) {}
+}
+
+// отрисовка текущего состояния
+function render() {
+  const s = readSettings();
+  if (run.phase === "count") {
+    el.phase.textContent = "вдох";
+    el.phase.className = "count";
+    el.big.textContent = String(run.count);
+    el.big.classList.toggle("accent", run.count === 1);
+    const total = s.seriesLimit >= INFINITE ? "∞" : s.seriesLimit;
+    el.seriesInfo.textContent = "серия " + run.series + " / " + total;
+    paintDots(run.count);
+  } else if (run.phase === "pause") {
+    el.phase.textContent = "пауза";
+    el.phase.className = "pause";
+    el.big.textContent = String(run.pauseLeft);
+    el.big.classList.remove("accent");
+    el.seriesInfo.textContent = "отдых перед серией " + (run.series + 1);
+    paintDots(0);
+  } else {
+    el.phase.textContent = "готов";
+    el.phase.className = "";
+    el.big.textContent = "0";
+    el.big.classList.remove("accent");
+    el.seriesInfo.textContent = "";
+    paintDots(0);
+  }
+  el.startBtn.textContent = run.active ? "Пауза" : (run.phase === "idle" ? "Старт" : "Продолжить");
+  el.startBtn.classList.toggle("running", run.active);
+}
+
+// анимация пульса на большой цифре
+function pulse() {
+  el.big.classList.add("pulse");
+  setTimeout(() => el.big.classList.remove("pulse"), 60);
+}
+
+// один удар счёта
+function beat() {
+  if (!run.active) return;
+  const s = readSettings();
+  run.count += 1;
+  const accent = run.count === 1;
+  if (s.sound) playClick(accent);
+  if (s.voice) speak(run.count);
+  pulse();
+  render();
+
+  if (run.count >= s.counts) {
+    const unlimited = s.seriesLimit >= INFINITE;
+    if (!unlimited && run.series >= s.seriesLimit) {
+      finish();
+      return;
+    }
+    startPause();
+    return;
+  }
+  scheduleBeat();
+}
+
+// планирование следующего удара с самокоррекцией дрейфа
+// ponytail: коррекция по абсолютному времени, точности сэмпла не нужно для дыхания
+function scheduleBeat() {
+  const s = readSettings();
+  const interval = 60000 / s.bpm;
+  nextBeatAt += interval;
+  const delay = Math.max(0, nextBeatAt - performance.now());
+  beatTimer = setTimeout(beat, delay);
+}
+
+// фаза паузы между сериями
+function startPause() {
+  const s = readSettings();
+  run.phase = "pause";
+  run.pauseLeft = s.pauseSec;
+  render();
+  if (s.pauseSec <= 0) { endPause(); return; }
+  pauseTimer = setInterval(() => {
+    run.pauseLeft -= 1;
+    render();
+    if (run.pauseLeft <= 0) {
+      clearInterval(pauseTimer);
+      pauseTimer = null;
+      endPause();
+    }
+  }, 1000);
+}
+
+// завершение паузы, переход к новой серии
+function endPause() {
+  run.series += 1;
+  run.count = 0;
+  run.phase = "count";
+  render();
+  nextBeatAt = performance.now();
+  beat();
+}
+
+// всё завершено
+function finish() {
+  stopTimers();
+  run.active = false;
+  run.phase = "idle";
+  run.count = 0;
+  run.series = 0;
+  releaseWakeLock();
+  render();
+  if (audioCtx) { playClick(true); setTimeout(() => playClick(true), 140); }
+}
+
+// снятие всех таймеров
+function stopTimers() {
+  if (beatTimer) { clearTimeout(beatTimer); beatTimer = null; }
+  if (pauseTimer) { clearInterval(pauseTimer); pauseTimer = null; }
+}
+
+// старт или пауза
+function toggleStart() {
+  if (run.active) {
+    run.active = false;
+    stopTimers();
+    releaseWakeLock();
+    render();
+    return;
+  }
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === "suspended") audioCtx.resume();
+
+  const s = readSettings();
+  buildDots(s.counts);
+  run.active = true;
+  acquireWakeLock();
+
+  if (run.phase === "idle") {
+    run.series = 1;
+    run.count = 0;
+    run.phase = "count";
+    nextBeatAt = performance.now();
+    beat();
+  } else if (run.phase === "count") {
+    nextBeatAt = performance.now();
+    beat();
+  } else if (run.phase === "pause") {
+    startPause();
+  }
+}
+
+// полный сброс
+function reset() {
+  stopTimers();
+  run.active = false;
+  run.phase = "idle";
+  run.count = 0;
+  run.series = 0;
+  releaseWakeLock();
+  const s = readSettings();
+  buildDots(s.counts);
+  render();
+}
+
+// повторный захват удержания экрана при возврате во вкладку
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && run.active) acquireWakeLock();
+});
+
+// слушатели настроек
+[el.bpm, el.counts, el.pause, el.series].forEach((node) => {
+  node.addEventListener("input", () => {
+    syncLabels();
+    if (node === el.counts && run.phase === "idle") buildDots(Number(el.counts.value));
+    saveSettings();
+  });
+});
+[el.sound, el.voice].forEach((node) => node.addEventListener("change", saveSettings));
+
+el.startBtn.addEventListener("click", toggleStart);
+el.resetBtn.addEventListener("click", reset);
+
+// инициализация
+loadSettings();
+buildDots(Number(el.counts.value));
+render();
+
+// регистрация service worker для офлайн-работы
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));
+}
+</script>
+</body>
+</html>
