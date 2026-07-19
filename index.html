@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Стрельникова</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f2f7">
@@ -73,6 +73,7 @@
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     user-select: none;
     -webkit-user-select: none;
+    touch-action: manipulation;   /* без зума по двойному тапу */
   }
   header { padding: 16px 18px 4px; text-align: center; }
   header h1 { margin: 0; font-size: 15px; font-weight: 600; color: var(--label-2); }
@@ -264,7 +265,8 @@
     <div class="note">голос на iPhone может слегка отставать при быстром темпе - если мешает, оставь только звук метронома. Экран во время упражнения не гаснет.</div>
   </details>
 
-  <!-- скрытый switch для тактильной отдачи на iOS 18+: программный клик по label даёт вибро -->
+  <!-- скрытый switch для тактильной отдачи: программный клик по label даёт вибро
+       только на iOS 17.4-26.4, в iOS 26.5 Apple закрыла этот путь -->
   <input type="checkbox" switch id="hapticSwitch" aria-hidden="true" tabindex="-1" style="position:absolute;width:0;height:0;opacity:0;pointer-events:none">
   <label id="hapticLabel" for="hapticSwitch" aria-hidden="true" style="position:absolute;width:0;height:0;opacity:0;pointer-events:none"></label>
 
@@ -349,8 +351,10 @@ const el = {
 // системное "меньше движения" - тогда WAAPI-анимации не запускаем
 const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-// тактильная отдача на iOS 18+: клик по label скрытого switch эмитит вибро
+// тактильная отдача: navigator.vibrate на Android,
+// клик по label скрытого switch на iOS 17.4-26.4 (в iOS 26.5+ путь закрыт, вибро нет)
 function haptic() {
+  if (navigator.vibrate) { navigator.vibrate(10); return; }
   try { el.hapticLabel.click(); } catch (_) { /* нет поддержки - тихо игнорируем */ }
 }
 
@@ -696,6 +700,10 @@ function reset() {
   releaseWakeLock();
   render();
 }
+
+// запрет пинч-зума во вкладке Safari, где user-scalable=no игнорируется;
+// в установленном на главный экран приложении зум запрещает сам viewport
+document.addEventListener("gesturestart", (e) => e.preventDefault());
 
 // возврат во вкладку: вернуть удержание экрана и разбудить аудио после прерывания
 document.addEventListener("visibilitychange", () => {
