@@ -1,2 +1,11 @@
+# OS
 .DS_Store
+Thumbs.db
+
+# редакторы
+.vscode/
+.idea/
+*.swp
+
+# инструменты
 .playwright-mcp/
