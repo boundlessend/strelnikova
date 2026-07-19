@@ -1,5 +1,5 @@
-// service worker для офлайн-работы: кэшируем оболочку приложения
-const CACHE = "strelnikova-v1";
+// service worker для офлайн-работы
+const CACHE = "strelnikova-v2";
 const ASSETS = [
   "./",
   "./index.html",
@@ -23,8 +23,26 @@ self.addEventListener("activate", (e) => {
   self.clients.claim();
 });
 
-// cache-first: приложение статическое, сначала кэш, потом сеть
+// навигация (HTML) - network-first, чтобы обновления доходили сразу;
+// остальное (иконки, манифест) - cache-first ради скорости и офлайна
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
+  const isNavigation =
+    e.request.mode === "navigate" ||
+    (e.request.destination === "document");
+
+  if (isNavigation) {
+    e.respondWith(
+      fetch(e.request)
+        .then((resp) => {
+          const copy = resp.clone();
+          caches.open(CACHE).then((c) => c.put("./index.html", copy));
+          return resp;
+        })
+        .catch(() => caches.match(e.request).then((r) => r || caches.match("./index.html")))
+    );
+    return;
+  }
+
   e.respondWith(caches.match(e.request).then((r) => r || fetch(e.request)));
 });

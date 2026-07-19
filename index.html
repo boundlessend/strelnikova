@@ -5,30 +5,34 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Стрельникова</title>
 <link rel="manifest" href="./manifest.webmanifest">
-<meta name="theme-color" content="#0f1115">
+<meta name="theme-color" content="#f2f2f7">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Дыхание">
 <link rel="apple-touch-icon" href="./icon-180.png">
 <link rel="icon" href="./icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
 <style>
   :root {
-    --bg: #0f1115;
-    --panel: #191c22;
-    --panel-2: #22262e;
-    --text: #eef1f6;
-    --muted: #8b93a1;
-    --accent: #4cc2ff;
-    --accent-2: #2e7d5b;
-    --danger: #d9534f;
+    --bg-top: #f2f2f7;
+    --bg-bot: #e8e8ef;
+    --card: rgba(255, 255, 255, 0.72);
+    --label: #1c1c1e;
+    --label-2: #8e8e93;
+    --blue: #007aff;
+    --green: #34c759;
+    --orange: #ff9500;
+    --red: #ff3b30;
+    --fill: #e5e5ea;
+    --sep: rgba(60, 60, 67, 0.18);
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; height: 100%; }
   body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+    background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bot) 100%);
+    background-attachment: fixed;
+    color: var(--label);
+    font-family: -apple-system, system-ui, "SF Pro Text", sans-serif;
     display: flex;
     flex-direction: column;
     min-height: 100dvh;
@@ -36,110 +40,114 @@
     user-select: none;
     -webkit-user-select: none;
   }
-  header {
-    padding: 14px 18px 6px;
-    text-align: center;
-  }
-  header h1 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: .3px; color: var(--muted); }
+  header { padding: 16px 18px 4px; text-align: center; }
+  header h1 { margin: 0; font-size: 15px; font-weight: 600; color: var(--label-2); }
 
-  /* основной дисплей счёта */
   main {
     flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    padding: 8px;
+    padding: 8px 18px;
   }
-  #phase { font-size: 20px; font-weight: 600; color: var(--muted); min-height: 26px; }
-  #phase.count { color: var(--accent); }
-  #phase.pause { color: var(--accent-2); }
+  .card {
+    width: 100%;
+    max-width: 420px;
+    background: var(--card);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    border: 0.5px solid rgba(255, 255, 255, 0.6);
+    border-radius: 30px;
+    padding: 30px 22px 34px;
+    box-shadow: 0 20px 50px -24px rgba(100, 112, 133, 0.4);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+  }
+  #phase { font-size: 17px; font-weight: 600; color: var(--green); letter-spacing: .2px; min-height: 22px; }
+  #phase.pause { color: var(--orange); }
+  #phase.idle { color: var(--label-2); }
+
+  /* кольцо-прогресс: угол задаётся переменной --p (в градусах) */
+  .ring {
+    position: relative;
+    width: min(64vw, 240px);
+    height: min(64vw, 240px);
+    border-radius: 50%;
+    background: conic-gradient(var(--ring, var(--blue)) calc(var(--p, 0) * 1deg), var(--fill) 0);
+    display: grid;
+    place-items: center;
+    transition: background .18s linear;
+  }
+  .ring::before {
+    content: "";
+    position: absolute;
+    inset: 15px;
+    border-radius: 50%;
+    background: #fbfbfd;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.04);
+  }
   #bigNumber {
+    position: relative;
     font-variant-numeric: tabular-nums;
-    font-weight: 800;
-    font-size: clamp(96px, 42vw, 260px);
+    font-weight: 600;
+    letter-spacing: -3px;
+    font-size: clamp(78px, 30vw, 104px);
     line-height: 1;
     transition: transform .06s ease;
   }
-  #bigNumber.pulse { transform: scale(1.06); }
-  #bigNumber.accent { color: var(--accent); }
-  #seriesInfo { font-size: 16px; color: var(--muted); min-height: 22px; }
+  #bigNumber.pulse { transform: scale(1.05); }
+  #seriesInfo { font-size: 15px; font-weight: 500; color: var(--label-2); min-height: 20px; }
 
-  /* точки прогресса серии */
-  #dots {
-    display: grid;
-    grid-template-columns: repeat(16, 1fr);
-    gap: 5px;
-    width: min(92vw, 460px);
-    margin-top: 6px;
-  }
-  .dot { aspect-ratio: 1; border-radius: 50%; background: var(--panel-2); }
-  .dot.on { background: var(--accent); }
-
-  /* кнопки управления */
-  .controls {
-    display: flex;
-    gap: 12px;
-    padding: 10px 16px;
-    justify-content: center;
-  }
+  .controls { display: flex; flex-direction: column; gap: 10px; padding: 12px 18px 16px; max-width: 456px; width: 100%; margin: 0 auto; }
   button {
     font-family: inherit;
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 600;
-    color: var(--text);
-    background: var(--panel);
-    border: 1px solid #2c3038;
+    border: 0;
     border-radius: 14px;
-    padding: 16px 22px;
-    min-width: 120px;
+    padding: 16px;
     cursor: pointer;
   }
-  button:active { transform: scale(.97); }
-  #startBtn { background: var(--accent); color: #04121c; border-color: transparent; flex: 1; max-width: 260px; }
-  #startBtn.running { background: var(--danger); color: #fff; }
-  #resetBtn { background: var(--panel); }
+  button:active { transform: scale(.98); }
+  #startBtn { background: var(--blue); color: #fff; }
+  #startBtn.running { background: var(--red); }
+  #resetBtn { background: rgba(120, 120, 128, 0.14); color: var(--blue); }
 
-  /* настройки */
-  details {
-    background: var(--panel);
-    border-top: 1px solid #23262d;
-  }
-  summary {
-    padding: 16px 18px;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--muted);
-    cursor: pointer;
-    list-style: none;
-  }
+  /* настройки в стиле сгруппированных iOS-таблиц */
+  details { max-width: 456px; width: 100%; margin: 0 auto; padding: 0 18px 22px; }
+  summary { text-align: center; color: var(--blue); font-size: 15px; font-weight: 500; padding: 8px; cursor: pointer; list-style: none; }
   summary::-webkit-details-marker { display: none; }
-  summary::after { content: "⚙︎ настройки"; }
-  details[open] summary::after { content: "✕ закрыть"; }
-  .settings { padding: 0 18px 20px; display: flex; flex-direction: column; gap: 20px; }
-  .field { display: flex; flex-direction: column; gap: 8px; }
-  .field .label { display: flex; justify-content: space-between; font-size: 15px; }
-  .field .label b { color: var(--accent); font-variant-numeric: tabular-nums; }
-  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
-  .row { display: flex; gap: 10px; align-items: center; justify-content: space-between; font-size: 15px; }
-  .switch { position: relative; width: 52px; height: 30px; }
+  summary::after { content: "Настройки"; }
+  details[open] summary::after { content: "Готово"; font-weight: 600; }
+  .group { background: #fff; border-radius: 14px; overflow: hidden; margin-top: 10px; box-shadow: 0 6px 20px -14px rgba(60, 70, 90, 0.4); }
+  .row { padding: 14px 16px; border-bottom: 0.5px solid var(--sep); }
+  .row:last-child { border-bottom: 0; }
+  .row .top { display: flex; justify-content: space-between; align-items: center; font-size: 16px; }
+  .row .top b { color: var(--blue); font-variant-numeric: tabular-nums; font-weight: 600; }
+  input[type=range] { width: 100%; margin-top: 12px; accent-color: var(--blue); height: 28px; }
+  .hint { font-size: 12px; color: var(--label-2); margin-top: 6px; line-height: 1.4; }
+  .toggle { display: flex; justify-content: space-between; align-items: center; }
+  .switch { position: relative; width: 51px; height: 31px; flex: none; }
   .switch input { opacity: 0; width: 0; height: 0; }
-  .slider { position: absolute; inset: 0; background: var(--panel-2); border-radius: 30px; transition: .2s; }
-  .slider::before { content: ""; position: absolute; width: 24px; height: 24px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s; }
-  .switch input:checked + .slider { background: var(--accent); }
-  .switch input:checked + .slider::before { transform: translateX(22px); }
-  .hint { font-size: 12px; color: var(--muted); line-height: 1.4; }
+  .slider { position: absolute; inset: 0; background: var(--fill); border-radius: 31px; transition: .2s; }
+  .slider::before { content: ""; position: absolute; width: 27px; height: 27px; left: 2px; top: 2px; background: #fff; border-radius: 50%; transition: .2s; box-shadow: 0 2px 4px rgba(0,0,0,.2); }
+  .switch input:checked + .slider { background: var(--green); }
+  .switch input:checked + .slider::before { transform: translateX(20px); }
+  .note { font-size: 12px; color: var(--label-2); line-height: 1.45; padding: 12px 4px 0; }
 </style>
 </head>
 <body>
   <header><h1>Дыхательная гимнастика Стрельниковой</h1></header>
 
   <main>
-    <div id="phase">готов</div>
-    <div id="bigNumber">0</div>
-    <div id="seriesInfo"></div>
-    <div id="dots"></div>
+    <div class="card">
+      <div id="phase" class="idle">готов</div>
+      <div class="ring" id="ring"><div id="bigNumber">0</div></div>
+      <div id="seriesInfo"></div>
+    </div>
   </main>
 
   <div class="controls">
@@ -149,35 +157,37 @@
 
   <details>
     <summary></summary>
-    <div class="settings">
-      <div class="field">
-        <div class="label"><span>Темп (вдохов в минуту)</span><b id="bpmVal">60</b></div>
+    <div class="group">
+      <div class="row">
+        <div class="top"><span>Темп (вдохов в минуту)</span><b id="bpmVal">60</b></div>
         <input type="range" id="bpm" min="30" max="150" step="5" value="60">
-        <div class="hint">как быстро идёт счёт раз-два-три. Стрельникова обычно ~60-80</div>
-      </div>
-      <div class="field">
-        <div class="label"><span>Счётов в серии</span><b id="countsVal">32</b></div>
-        <input type="range" id="counts" min="8" max="96" step="8" value="32">
-      </div>
-      <div class="field">
-        <div class="label"><span>Пауза между сериями (сек)</span><b id="pauseVal">5</b></div>
-        <input type="range" id="pause" min="0" max="30" step="1" value="5">
-      </div>
-      <div class="field">
-        <div class="label"><span>Число серий</span><b id="seriesVal">3</b></div>
-        <input type="range" id="series" min="1" max="12" step="1" value="3">
-        <div class="hint">на максимуме справа - без ограничения (∞), идёт пока не остановишь</div>
+        <div class="hint">как быстро идёт счёт. Стрельникова обычно ~60-80</div>
       </div>
       <div class="row">
+        <div class="top"><span>Счётов в серии</span><b id="countsVal">32</b></div>
+        <input type="range" id="counts" min="8" max="96" step="8" value="32">
+      </div>
+      <div class="row">
+        <div class="top"><span>Пауза между сериями (сек)</span><b id="pauseVal">5</b></div>
+        <input type="range" id="pause" min="0" max="30" step="1" value="5">
+      </div>
+      <div class="row">
+        <div class="top"><span>Число серий</span><b id="seriesVal">3</b></div>
+        <input type="range" id="series" min="1" max="12" step="1" value="3">
+        <div class="hint">на максимуме справа - без ограничения (∞), пока не остановишь</div>
+      </div>
+    </div>
+    <div class="group">
+      <div class="row toggle">
         <span>Звук метронома</span>
         <label class="switch"><input type="checkbox" id="sound" checked><span class="slider"></span></label>
       </div>
-      <div class="row">
-        <span>Голосовой счёт (говорит число)</span>
+      <div class="row toggle">
+        <span>Голосовой счёт</span>
         <label class="switch"><input type="checkbox" id="voice"><span class="slider"></span></label>
       </div>
-      <div class="hint">голос на iPhone может слегка отставать при быстром темпе - если мешает, оставь только звук метронома. Экран во время упражнения не гаснет.</div>
     </div>
+    <div class="note">голос на iPhone может слегка отставать при быстром темпе - если мешает, оставь только звук метронома. Экран во время упражнения не гаснет.</div>
   </details>
 
 <script>
@@ -218,8 +228,8 @@ const INFINITE = SERIES_MAX + 1;    // положение "без огранич
 const el = {
   phase: document.getElementById("phase"),
   big: document.getElementById("bigNumber"),
+  ring: document.getElementById("ring"),
   seriesInfo: document.getElementById("seriesInfo"),
-  dots: document.getElementById("dots"),
   startBtn: document.getElementById("startBtn"),
   resetBtn: document.getElementById("resetBtn"),
   bpm: document.getElementById("bpm"),
@@ -274,22 +284,11 @@ function syncLabels() {
   el.seriesVal.textContent = s > SERIES_MAX ? "∞" : String(s);
 }
 
-// построение точек прогресса под текущее число счётов
-function buildDots(total) {
-  el.dots.innerHTML = "";
-  for (let i = 0; i < total; i++) {
-    const d = document.createElement("div");
-    d.className = "dot";
-    el.dots.appendChild(d);
-  }
-}
-
-// подсветка точек до текущего счёта
-function paintDots(upto) {
-  const nodes = el.dots.children;
-  for (let i = 0; i < nodes.length; i++) {
-    nodes[i].classList.toggle("on", i < upto);
-  }
+// установка заполнения кольца: доля 0..1 и цвет
+function setRing(fraction, color) {
+  const deg = Math.max(0, Math.min(1, fraction)) * 360;
+  el.ring.style.setProperty("--p", deg.toFixed(1));
+  el.ring.style.setProperty("--ring", color);
 }
 
 // короткий щелчок метронома через Web Audio, accent - акцент на первом счёте
@@ -335,26 +334,23 @@ function render() {
   const s = readSettings();
   if (run.phase === "count") {
     el.phase.textContent = "вдох";
-    el.phase.className = "count";
+    el.phase.className = "";
     el.big.textContent = String(run.count);
-    el.big.classList.toggle("accent", run.count === 1);
     const total = s.seriesLimit >= INFINITE ? "∞" : s.seriesLimit;
-    el.seriesInfo.textContent = "серия " + run.series + " / " + total;
-    paintDots(run.count);
+    el.seriesInfo.textContent = "серия " + run.series + " из " + total;
+    setRing(run.count / s.counts, "var(--blue)");
   } else if (run.phase === "pause") {
     el.phase.textContent = "пауза";
     el.phase.className = "pause";
     el.big.textContent = String(run.pauseLeft);
-    el.big.classList.remove("accent");
     el.seriesInfo.textContent = "отдых перед серией " + (run.series + 1);
-    paintDots(0);
+    setRing(s.pauseSec > 0 ? run.pauseLeft / s.pauseSec : 0, "var(--orange)");
   } else {
     el.phase.textContent = "готов";
-    el.phase.className = "";
+    el.phase.className = "idle";
     el.big.textContent = "0";
-    el.big.classList.remove("accent");
     el.seriesInfo.textContent = "";
-    paintDots(0);
+    setRing(0, "var(--blue)");
   }
   el.startBtn.textContent = run.active ? "Пауза" : (run.phase === "idle" ? "Старт" : "Продолжить");
   el.startBtn.classList.toggle("running", run.active);
@@ -459,8 +455,6 @@ function toggleStart() {
   }
   if (audioCtx.state === "suspended") audioCtx.resume();
 
-  const s = readSettings();
-  buildDots(s.counts);
   run.active = true;
   acquireWakeLock();
 
@@ -486,8 +480,6 @@ function reset() {
   run.count = 0;
   run.series = 0;
   releaseWakeLock();
-  const s = readSettings();
-  buildDots(s.counts);
   render();
 }
 
@@ -500,7 +492,6 @@ document.addEventListener("visibilitychange", () => {
 [el.bpm, el.counts, el.pause, el.series].forEach((node) => {
   node.addEventListener("input", () => {
     syncLabels();
-    if (node === el.counts && run.phase === "idle") buildDots(Number(el.counts.value));
     saveSettings();
   });
 });
@@ -511,7 +502,6 @@ el.resetBtn.addEventListener("click", reset);
 
 // инициализация
 loadSettings();
-buildDots(Number(el.counts.value));
 render();
 
 // регистрация service worker для офлайн-работы
