@@ -25,6 +25,9 @@
     --red: #ff3b30;
     --fill: #e5e5ea;
     --sep: rgba(60, 60, 67, 0.18);
+    /* пружинный тайминг для отскока и мягкий вылет */
+    --ease-spring: linear(0, 0.009, 0.035 2.1%, 0.141, 0.281 6.7%, 0.723 12.9%, 0.938 16.7%, 1.017, 1.077, 1.121, 1.149 24.3%, 1.159, 1.163, 1.161, 1.154 29.9%, 1.129 32.8%, 1.051 39.6%, 1.017 43.1%, 0.991, 0.977 51%, 0.974 53.8%, 0.975 57.1%, 0.997 69.8%, 1.003 76.9%, 1);
+    --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; height: 100%; }
@@ -96,9 +99,7 @@
     letter-spacing: -3px;
     font-size: clamp(74px, 28vw, 100px);
     line-height: 1;
-    transition: transform .06s ease;
   }
-  #bigNumber.pulse { transform: scale(1.05); }
   #seriesInfo { font-size: 15px; font-weight: 500; color: var(--label-2); text-align: center; min-height: 20px; }
 
   .controls { display: flex; flex-direction: column; gap: 10px; padding: 12px 18px 16px; max-width: 456px; width: 100%; margin: 0 auto; }
@@ -110,10 +111,12 @@
     border-radius: 14px;
     padding: 16px;
     cursor: pointer;
+    transition: transform .5s var(--ease-spring), background .25s ease, box-shadow .25s ease, filter .2s ease;
   }
-  button:active { transform: scale(.98); }
-  #startBtn { background: var(--blue); color: #fff; }
-  #startBtn.running { background: var(--red); }
+  button:active { transform: scale(.94); transition-duration: .09s; }
+  #startBtn { background: var(--blue); color: #fff; box-shadow: 0 8px 22px -12px var(--blue); }
+  #startBtn:active { filter: brightness(.94); }
+  #startBtn.running { background: var(--red); box-shadow: 0 8px 22px -12px var(--red); }
   #resetBtn { background: rgba(120, 120, 128, 0.14); color: var(--blue); }
 
   /* настройки в стиле сгруппированных iOS-таблиц */
@@ -133,16 +136,33 @@
   .toggle { display: flex; justify-content: space-between; align-items: center; }
   .switch { position: relative; width: 51px; height: 31px; flex: none; }
   .switch input { opacity: 0; width: 0; height: 0; }
-  .slider { position: absolute; inset: 0; background: var(--fill); border-radius: 31px; transition: .2s; }
-  .slider::before { content: ""; position: absolute; width: 27px; height: 27px; left: 2px; top: 2px; background: #fff; border-radius: 50%; transition: .2s; box-shadow: 0 2px 4px rgba(0,0,0,.2); }
+  .slider { position: absolute; inset: 0; background: var(--fill); border-radius: 31px; transition: background .3s ease; }
+  .slider::before { content: ""; position: absolute; width: 27px; height: 27px; left: 2px; top: 2px; background: #fff; border-radius: 14px; box-shadow: 0 2px 4px rgba(0,0,0,.2); transition: transform .4s var(--ease-spring), width .22s var(--ease-soft); }
   .switch input:checked + .slider { background: var(--green); }
   .switch input:checked + .slider::before { transform: translateX(20px); }
+  /* нажатие вытягивает кнопку тумблера, как на iOS */
+  .switch:active .slider::before { width: 33px; }
+  .switch input:checked:active + .slider::before { transform: translateX(14px); }
   .note { font-size: 12px; color: var(--label-2); line-height: 1.45; padding: 12px 4px 0; }
   /* список упражнений в настройках */
   .ex-list { padding: 6px 16px 14px; }
   .ex-list .ex-item { font-size: 15px; color: var(--label); padding: 8px 0; border-bottom: 0.5px solid var(--sep); display: flex; gap: 10px; }
   .ex-list .ex-item:last-child { border-bottom: 0; }
   .ex-list .ex-item span { color: var(--label-2); font-variant-numeric: tabular-nums; min-width: 22px; }
+
+  /* плавное появление блоков настроек при раскрытии */
+  @keyframes riseIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  details[open] .group-title, details[open] .group, details[open] .note {
+    animation: riseIn .34s var(--ease-soft) both;
+  }
+  details[open] .group:nth-of-type(2) { animation-delay: .03s; }
+  details[open] .group:nth-of-type(3) { animation-delay: .06s; }
+  details[open] .group:nth-of-type(4) { animation-delay: .09s; }
+
+  /* уважаем системную настройку "меньше движения" */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+  }
 </style>
 </head>
 <body>
@@ -211,6 +231,10 @@
 
     <div class="note">голос на iPhone может слегка отставать при быстром темпе - если мешает, оставь только звук метронома. Экран во время упражнения не гаснет.</div>
   </details>
+
+  <!-- скрытый switch для тактильной отдачи на iOS 18+: программный клик по label даёт вибро -->
+  <input type="checkbox" switch id="hapticSwitch" aria-hidden="true" tabindex="-1" style="position:absolute;width:0;height:0;opacity:0;pointer-events:none">
+  <label id="hapticLabel" for="hapticSwitch" aria-hidden="true" style="position:absolute;width:0;height:0;opacity:0;pointer-events:none"></label>
 
 <script>
 "use strict";
@@ -282,7 +306,16 @@ const el = {
   roundsVal: document.getElementById("roundsVal"),
   pauseExVal: document.getElementById("pauseExVal"),
   pauseRoundVal: document.getElementById("pauseRoundVal"),
+  hapticLabel: document.getElementById("hapticLabel"),
 };
+
+// системное "меньше движения" - тогда WAAPI-анимации не запускаем
+const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// тактильная отдача на iOS 18+: клик по label скрытого switch эмитит вибро
+function haptic() {
+  try { el.hapticLabel.click(); } catch (_) { /* нет поддержки - тихо игнорируем */ }
+}
 
 // загрузка настроек из localStorage
 function loadSettings() {
@@ -418,10 +451,22 @@ function render() {
   el.startBtn.classList.toggle("running", run.active);
 }
 
-// анимация пульса на большой цифре
+// пружинный отскок большой цифры на каждый счёт
 function pulse() {
-  el.big.classList.add("pulse");
-  setTimeout(() => el.big.classList.remove("pulse"), 60);
+  if (prefersReduced) return;
+  el.big.animate(
+    [{ transform: "scale(1)" }, { transform: "scale(1.12)", offset: 0.3 }, { transform: "scale(1)" }],
+    { duration: 340, easing: "cubic-bezier(0.34, 1.56, 0.64, 1)" }
+  );
+}
+
+// мягкое появление названия при смене упражнения или фазы
+function bumpPhase() {
+  if (prefersReduced) return;
+  el.phase.animate(
+    [{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }],
+    { duration: 300, easing: "cubic-bezier(0.22, 1, 0.36, 1)" }
+  );
 }
 
 // один удар счёта
@@ -434,6 +479,7 @@ function beat() {
   if (s.voice) speak(run.count);
   pulse();
   render();
+  if (accent) { bumpPhase(); haptic(); }   // новое упражнение: всплеск названия и вибро
 
   if (run.count >= s.counts) {
     endExercise();
@@ -521,6 +567,7 @@ function stopTimers() {
 
 // старт или пауза
 function toggleStart() {
+  haptic();
   if (run.active) {
     run.active = false;
     stopTimers();
@@ -555,6 +602,7 @@ function toggleStart() {
 
 // полный сброс
 function reset() {
+  haptic();
   stopTimers();
   run.active = false;
   run.phase = "idle";
@@ -570,15 +618,24 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible" && run.active) acquireWakeLock();
 });
 
+// пружинный отскок значения рядом со слайдером
+function popValue(node) {
+  if (prefersReduced) return;
+  const b = node.closest(".row").querySelector("b");
+  if (b) b.animate([{ transform: "scale(1)" }, { transform: "scale(1.25)", offset: 0.35 }, { transform: "scale(1)" }],
+    { duration: 260, easing: "cubic-bezier(0.34, 1.56, 0.64, 1)" });
+}
+
 // слушатели настроек
 [el.bpm, el.counts, el.rounds, el.pauseEx, el.pauseRound].forEach((node) => {
   node.addEventListener("input", () => {
     syncLabels();
     saveSettings();
+    popValue(node);
     if (!run.active && run.phase === "idle") render();
   });
 });
-[el.sound, el.voice].forEach((node) => node.addEventListener("change", saveSettings));
+[el.sound, el.voice].forEach((node) => node.addEventListener("change", () => { saveSettings(); haptic(); }));
 
 el.startBtn.addEventListener("click", toggleStart);
 el.resetBtn.addEventListener("click", reset);

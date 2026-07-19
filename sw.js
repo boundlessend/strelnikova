@@ -1,5 +1,5 @@
 // service worker для офлайн-работы
-const CACHE = "strelnikova-v3";
+const CACHE = "strelnikova-v4";
 const ASSETS = [
   "./",
   "./index.html",
