@@ -1,0 +1,12 @@
+{
+  "name": "strelnikova",
+  "private": true,
+  "description": "метроном-счётчик для дыхательной гимнастики Стрельниковой",
+  "license": "BSD-3-Clause",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.54.0"
+  }
+}

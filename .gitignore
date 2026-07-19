@@ -9,3 +9,8 @@ Thumbs.db
 
 # инструменты
 .playwright-mcp/
+
+# тесты
+node_modules/
+test-results/
+playwright-report/

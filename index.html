@@ -2,10 +2,11 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Стрельникова</title>
 <link rel="manifest" href="./manifest.webmanifest">
-<meta name="theme-color" content="#f2f2f7">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f2f7">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#16161a">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Дыхание">
@@ -25,9 +26,39 @@
     --red: #ff3b30;
     --fill: #e5e5ea;
     --sep: rgba(60, 60, 67, 0.18);
+    --card-border: rgba(255, 255, 255, 0.6);
+    --ring-hole: #fbfbfd;
+    --group-bg: #fff;
+    --btn2: rgba(120, 120, 128, 0.14);
     /* пружинный тайминг для отскока и мягкий вылет */
     --ease-spring: linear(0, 0.009, 0.035 2.1%, 0.141, 0.281 6.7%, 0.723 12.9%, 0.938 16.7%, 1.017, 1.077, 1.121, 1.149 24.3%, 1.159, 1.163, 1.161, 1.154 29.9%, 1.129 32.8%, 1.051 39.6%, 1.017 43.1%, 0.991, 0.977 51%, 0.974 53.8%, 0.975 57.1%, 0.997 69.8%, 1.003 76.9%, 1);
     --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  /* тёмная тема повторяет системную палитру iOS */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-top: #16161a;
+      --bg-bot: #0b0b0e;
+      --card: rgba(28, 28, 30, 0.72);
+      --label: #f2f2f7;
+      --label-2: #98989e;
+      --blue: #0a84ff;
+      --green: #30d158;
+      --orange: #ff9f0a;
+      --red: #ff453a;
+      --fill: #39393d;
+      --sep: rgba(84, 84, 88, 0.6);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --ring-hole: #1c1c1e;
+      --group-bg: #1c1c1e;
+      --btn2: rgba(120, 120, 128, 0.32);
+    }
+  }
+  /* регистрация --p позволяет браузеру плавно анимировать заливку кольца */
+  @property --p {
+    syntax: "<number>";
+    inherits: false;
+    initial-value: 0;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; height: 100%; }
@@ -60,7 +91,7 @@
     background: var(--card);
     -webkit-backdrop-filter: blur(20px);
     backdrop-filter: blur(20px);
-    border: 0.5px solid rgba(255, 255, 255, 0.6);
+    border: 0.5px solid var(--card-border);
     border-radius: 30px;
     padding: 26px 22px 30px;
     box-shadow: 0 20px 50px -24px rgba(100, 112, 133, 0.4);
@@ -82,14 +113,14 @@
     background: conic-gradient(var(--ring, var(--blue)) calc(var(--p, 0) * 1deg), var(--fill) 0);
     display: grid;
     place-items: center;
-    transition: background .18s linear;
+    transition: --p .18s linear;
   }
   .ring::before {
     content: "";
     position: absolute;
     inset: 15px;
     border-radius: 50%;
-    background: #fbfbfd;
+    background: var(--ring-hole);
     box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.04);
   }
   #bigNumber {
@@ -117,7 +148,7 @@
   #startBtn { background: var(--blue); color: #fff; box-shadow: 0 8px 22px -12px var(--blue); }
   #startBtn:active { filter: brightness(.94); }
   #startBtn.running { background: var(--red); box-shadow: 0 8px 22px -12px var(--red); }
-  #resetBtn { background: rgba(120, 120, 128, 0.14); color: var(--blue); }
+  #resetBtn { background: var(--btn2); color: var(--blue); }
 
   /* настройки в стиле сгруппированных iOS-таблиц */
   details { max-width: 456px; width: 100%; margin: 0 auto; padding: 0 18px 22px; }
@@ -125,7 +156,7 @@
   summary::-webkit-details-marker { display: none; }
   summary::after { content: "Настройки"; }
   details[open] summary::after { content: "Готово"; font-weight: 600; }
-  .group { background: #fff; border-radius: 14px; overflow: hidden; margin-top: 10px; box-shadow: 0 6px 20px -14px rgba(60, 70, 90, 0.4); }
+  .group { background: var(--group-bg); border-radius: 14px; overflow: hidden; margin-top: 10px; box-shadow: 0 6px 20px -14px rgba(60, 70, 90, 0.4); }
   .group-title { font-size: 13px; color: var(--label-2); text-transform: uppercase; letter-spacing: .3px; padding: 16px 6px 2px; }
   .row { padding: 14px 16px; border-bottom: 0.5px solid var(--sep); }
   .row:last-child { border-bottom: 0; }
@@ -146,9 +177,10 @@
   .note { font-size: 12px; color: var(--label-2); line-height: 1.45; padding: 12px 4px 0; }
   /* список упражнений в настройках */
   .ex-list { padding: 6px 16px 14px; }
-  .ex-list .ex-item { font-size: 15px; color: var(--label); padding: 8px 0; border-bottom: 0.5px solid var(--sep); display: flex; gap: 10px; }
+  .ex-list .ex-item { font-size: 15px; color: var(--label); padding: 8px 0; border-bottom: 0.5px solid var(--sep); display: flex; gap: 10px; align-items: center; cursor: pointer; }
   .ex-list .ex-item:last-child { border-bottom: 0; }
   .ex-list .ex-item span { color: var(--label-2); font-variant-numeric: tabular-nums; min-width: 22px; }
+  .ex-list .ex-item input { margin-left: auto; flex: none; width: 20px; height: 20px; accent-color: var(--green); }
 
   /* плавное появление блоков настроек при раскрытии */
   @keyframes riseIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
@@ -170,7 +202,7 @@
 
   <main>
     <div class="card">
-      <div id="phase" class="idle">готов</div>
+      <div id="phase" class="idle" aria-live="polite">готов</div>
       <div class="ring" id="ring"><div id="bigNumber">0</div></div>
       <div id="seriesInfo"></div>
     </div>
@@ -187,16 +219,16 @@
     <div class="group-title">Ритм и объём</div>
     <div class="group">
       <div class="row">
-        <div class="top"><span>Темп (вдохов в минуту)</span><b id="bpmVal">60</b></div>
+        <div class="top"><label for="bpm">Темп (вдохов в минуту)</label><b id="bpmVal">60</b></div>
         <input type="range" id="bpm" min="30" max="150" step="5" value="60">
         <div class="hint">как быстро идёт счёт. Стрельникова обычно ~60-80</div>
       </div>
       <div class="row">
-        <div class="top"><span>Счётов в упражнении</span><b id="countsVal">32</b></div>
+        <div class="top"><label for="counts">Счётов в упражнении</label><b id="countsVal">32</b></div>
         <input type="range" id="counts" min="8" max="96" step="8" value="32">
       </div>
       <div class="row">
-        <div class="top"><span>Число кругов</span><b id="roundsVal">1</b></div>
+        <div class="top"><label for="rounds">Число кругов</label><b id="roundsVal">1</b></div>
         <input type="range" id="rounds" min="1" max="10" step="1" value="1">
         <div class="hint">круг - это все упражнения подряд по разу</div>
       </div>
@@ -205,25 +237,25 @@
     <div class="group-title">Паузы</div>
     <div class="group">
       <div class="row">
-        <div class="top"><span>Между упражнениями (сек)</span><b id="pauseExVal">5</b></div>
+        <div class="top"><label for="pauseEx">Между упражнениями (сек)</label><b id="pauseExVal">5</b></div>
         <input type="range" id="pauseEx" min="0" max="30" step="1" value="5">
       </div>
       <div class="row">
-        <div class="top"><span>Между кругами (сек)</span><b id="pauseRoundVal">10</b></div>
+        <div class="top"><label for="pauseRound">Между кругами (сек)</label><b id="pauseRoundVal">10</b></div>
         <input type="range" id="pauseRound" min="0" max="60" step="5" value="10">
       </div>
     </div>
 
     <div class="group-title">Звук</div>
     <div class="group">
-      <div class="row toggle">
+      <label class="row toggle">
         <span>Звук метронома</span>
-        <label class="switch"><input type="checkbox" id="sound" checked><span class="slider"></span></label>
-      </div>
-      <div class="row toggle">
+        <span class="switch"><input type="checkbox" id="sound" checked><span class="slider"></span></span>
+      </label>
+      <label class="row toggle">
         <span>Голосовой счёт</span>
-        <label class="switch"><input type="checkbox" id="voice"><span class="slider"></span></label>
-      </div>
+        <span class="switch"><input type="checkbox" id="voice"><span class="slider"></span></span>
+      </label>
     </div>
 
     <div class="group-title">Упражнения (порядок круга)</div>
@@ -267,7 +299,11 @@ const defaults = {
   pauseRoundSec: 10,
   sound: true,
   voice: false,
+  exercises: EXERCISES.map(() => true),   // какие упражнения входят в круг
 };
+
+// настройки, зафиксированные в момент старта тренировки; между тренировками null
+let session = null;
 
 // текущее состояние выполнения
 const run = {
@@ -284,6 +320,7 @@ let pauseTimer = null;
 let nextBeatAt = 0;
 let audioCtx = null;
 let wakeLock = null;
+let pendingClickGain = null;   // узел ещё не прозвучавшего щелчка, чтобы отменять при паузе
 
 // элементы
 const el = {
@@ -317,17 +354,28 @@ function haptic() {
   try { el.hapticLabel.click(); } catch (_) { /* нет поддержки - тихо игнорируем */ }
 }
 
-// загрузка настроек из localStorage
+// число из хранилища, иначе значение по умолчанию; к границам ползунка дорежет сам range-input
+function storedNum(v, fallback) {
+  return typeof v === "number" && Number.isFinite(v) ? v : fallback;
+}
+
+// загрузка настроек из localStorage; битые данные заменяются значениями по умолчанию
 function loadSettings() {
-  const raw = localStorage.getItem(STORE_KEY);
-  const s = raw ? { ...defaults, ...JSON.parse(raw) } : { ...defaults };
-  el.bpm.value = String(s.bpm);
-  el.counts.value = String(s.counts);
-  el.rounds.value = String(s.rounds);
-  el.pauseEx.value = String(s.pauseExSec);
-  el.pauseRound.value = String(s.pauseRoundSec);
-  el.sound.checked = s.sound;
-  el.voice.checked = s.voice;
+  let stored = {};
+  try {
+    stored = JSON.parse(localStorage.getItem(STORE_KEY)) || {};
+  } catch (err) {
+    console.warn("настройки в localStorage повреждены, используются значения по умолчанию", err);
+  }
+  const s = { ...defaults, ...stored };
+  el.bpm.value = String(storedNum(s.bpm, defaults.bpm));
+  el.counts.value = String(storedNum(s.counts, defaults.counts));
+  el.rounds.value = String(storedNum(s.rounds, defaults.rounds));
+  el.pauseEx.value = String(storedNum(s.pauseExSec, defaults.pauseExSec));
+  el.pauseRound.value = String(storedNum(s.pauseRoundSec, defaults.pauseRoundSec));
+  el.sound.checked = s.sound !== false;
+  el.voice.checked = s.voice === true;
+  renderExList(Array.isArray(s.exercises) ? s.exercises : defaults.exercises);
   syncLabels();
 }
 
@@ -341,6 +389,7 @@ function readSettings() {
     pauseRoundSec: Number(el.pauseRound.value),
     sound: el.sound.checked,
     voice: el.voice.checked,
+    exercises: [...el.exList.querySelectorAll("input")].map((box) => box.checked),
   };
 }
 
@@ -358,13 +407,27 @@ function syncLabels() {
   el.pauseRoundVal.textContent = el.pauseRound.value;
 }
 
-// отрисовка списка упражнений в настройках
-function renderExList() {
+// список упражнений с чекбоксами включения в круг
+function renderExList(enabled) {
   el.exList.innerHTML = "";
   EXERCISES.forEach((name, i) => {
-    const row = document.createElement("div");
+    const row = document.createElement("label");
     row.className = "ex-item";
-    row.innerHTML = "<span>" + (i + 1) + "</span>" + name;
+    const num = document.createElement("span");
+    num.textContent = String(i + 1);
+    const box = document.createElement("input");
+    box.type = "checkbox";
+    box.checked = enabled[i] !== false;
+    box.addEventListener("change", () => {
+      if (readSettings().exercises.every((on) => !on)) {
+        box.checked = true;   // хотя бы одно упражнение должно остаться в круге
+        return;
+      }
+      saveSettings();
+      haptic();
+      if (!run.active && run.phase === "idle") render();
+    });
+    row.append(num, name, box);
     el.exList.appendChild(row);
   });
 }
@@ -376,10 +439,12 @@ function setRing(fraction, color) {
   el.ring.style.setProperty("--ring", color);
 }
 
-// короткий щелчок метронома через Web Audio, accent - акцент на первом счёте
-function playClick(accent) {
+// щелчок метронома, запланированный на момент atMs (шкала performance.now());
+// момент задаётся часами AudioContext, поэтому джиттер setTimeout на звук не влияет
+function scheduleClick(atMs, accent) {
   if (!audioCtx) return;
-  const t = audioCtx.currentTime;
+  if (audioCtx.state !== "running") audioCtx.resume();
+  const t = audioCtx.currentTime + Math.max(0, (atMs - performance.now()) / 1000);
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
   osc.frequency.value = accent ? 1050 : 720;
@@ -390,6 +455,15 @@ function playClick(accent) {
   osc.connect(gain).connect(audioCtx.destination);
   osc.start(t);
   osc.stop(t + 0.1);
+  pendingClickGain = gain;
+}
+
+// отмена ещё не прозвучавшего щелчка (пауза или сброс между ударами)
+function cancelPendingClick() {
+  if (pendingClickGain) {
+    pendingClickGain.disconnect();
+    pendingClickGain = null;
+  }
 }
 
 // произнести текст голосом
@@ -415,36 +489,36 @@ async function releaseWakeLock() {
 }
 
 // строка про текущий круг
-function roundInfo(s) {
-  return "круг " + run.round + "/" + s.rounds;
+function roundInfo() {
+  return "круг " + run.round + "/" + session.rounds;
 }
 
-// отрисовка текущего состояния
+// отрисовка текущего состояния; во время тренировки данные берутся из session
 function render() {
-  const s = readSettings();
   if (run.phase === "count") {
-    el.phase.textContent = EXERCISES[run.exIndex];
+    el.phase.textContent = session.names[run.exIndex];
     el.phase.className = "";
     el.big.textContent = String(run.count);
-    el.seriesInfo.textContent = roundInfo(s) + " · упр. " + (run.exIndex + 1) + "/" + EXERCISES.length;
-    setRing(run.count / s.counts, "var(--blue)");
+    el.seriesInfo.textContent = roundInfo() + " · упр. " + (run.exIndex + 1) + "/" + session.names.length;
+    setRing(run.count / session.counts, "var(--blue)");
   } else if (run.phase === "pauseExercise") {
     el.phase.textContent = "пауза";
     el.phase.className = "pause";
     el.big.textContent = String(run.pauseLeft);
-    el.seriesInfo.textContent = "дальше: " + EXERCISES[run.exIndex + 1];
-    setRing(s.pauseExSec > 0 ? run.pauseLeft / s.pauseExSec : 0, "var(--orange)");
+    el.seriesInfo.textContent = "дальше: " + session.names[run.exIndex + 1];
+    setRing(session.pauseExSec > 0 ? run.pauseLeft / session.pauseExSec : 0, "var(--orange)");
   } else if (run.phase === "pauseRound") {
     el.phase.textContent = "отдых между кругами";
     el.phase.className = "pause";
     el.big.textContent = String(run.pauseLeft);
-    el.seriesInfo.textContent = "дальше: круг " + (run.round + 1) + ", " + EXERCISES[0];
-    setRing(s.pauseRoundSec > 0 ? run.pauseLeft / s.pauseRoundSec : 0, "var(--orange)");
+    el.seriesInfo.textContent = "дальше: круг " + (run.round + 1) + ", " + session.names[0];
+    setRing(session.pauseRoundSec > 0 ? run.pauseLeft / session.pauseRoundSec : 0, "var(--orange)");
   } else {
+    const s = readSettings();
     el.phase.textContent = "готов";
     el.phase.className = "idle";
     el.big.textContent = "0";
-    el.seriesInfo.textContent = EXERCISES.length + " упражнений · кругов: " + s.rounds;
+    el.seriesInfo.textContent = "упражнений: " + s.exercises.filter(Boolean).length + " · кругов: " + s.rounds;
     setRing(0, "var(--blue)");
   }
   el.startBtn.textContent = run.active ? "Пауза" : (run.phase === "idle" ? "Старт" : "Продолжить");
@@ -469,66 +543,67 @@ function bumpPhase() {
   );
 }
 
+// планирование удара на момент atMs: звук - точно по аудио-часам, интерфейс - таймером
+function scheduleBeatAt(atMs) {
+  nextBeatAt = atMs;
+  if (session.sound) scheduleClick(atMs, run.count + 1 === 1);
+  beatTimer = setTimeout(beat, Math.max(0, atMs - performance.now()));
+}
+
 // один удар счёта
 function beat() {
   if (!run.active) return;
-  const s = readSettings();
   run.count += 1;
   const accent = run.count === 1;
-  if (s.sound) playClick(accent);
-  if (s.voice) speak(run.count);
+  if (session.voice) speak(run.count);
   pulse();
   render();
   if (accent) { bumpPhase(); haptic(); }   // новое упражнение: всплеск названия и вибро
 
-  if (run.count >= s.counts) {
+  if (run.count >= session.counts) {
     endExercise();
     return;
   }
-  scheduleBeat();
-}
-
-// планирование следующего удара с самокоррекцией дрейфа
-// ponytail: коррекция по абсолютному времени, точности сэмпла не нужно для дыхания
-function scheduleBeat() {
-  const s = readSettings();
-  const interval = 60000 / s.bpm;
-  nextBeatAt += interval;
-  const delay = Math.max(0, nextBeatAt - performance.now());
-  beatTimer = setTimeout(beat, delay);
+  // clamp к текущему моменту: после разморозки фоновой вкладки счёт
+  // продолжается в обычном темпе, а не "дострачивает" пропущенное очередью
+  scheduleBeatAt(Math.max(nextBeatAt + 60000 / session.bpm, performance.now()));
 }
 
 // упражнение закончилось: пауза перед следующим, либо конец круга
 function endExercise() {
-  const s = readSettings();
-  const lastExercise = run.exIndex >= EXERCISES.length - 1;
+  const lastExercise = run.exIndex >= session.names.length - 1;
   if (!lastExercise) {
-    startPause("pauseExercise", s.pauseExSec);
+    startPause("pauseExercise", session.pauseExSec);
     return;
   }
   // дошли до конца круга
-  if (run.round >= s.rounds) {
+  if (run.round >= session.rounds) {
     finish();
     return;
   }
-  startPause("pauseRound", s.pauseRoundSec);
+  startPause("pauseRound", session.pauseRoundSec);
 }
 
-// запуск паузы заданного типа и длительности
+// запуск паузы; отсчёт ведётся от абсолютного времени,
+// поэтому троттлинг таймеров в фоне паузу не растягивает
 function startPause(phase, seconds) {
   run.phase = phase;
   run.pauseLeft = seconds;
   render();
   if (seconds <= 0) { afterPause(); return; }
+  const endAt = performance.now() + seconds * 1000;
   pauseTimer = setInterval(() => {
-    run.pauseLeft -= 1;
-    render();
-    if (run.pauseLeft <= 0) {
+    const left = Math.ceil((endAt - performance.now()) / 1000);
+    if (left !== run.pauseLeft) {
+      run.pauseLeft = Math.max(0, left);
+      render();
+    }
+    if (left <= 0) {
       clearInterval(pauseTimer);
       pauseTimer = null;
       afterPause();
     }
-  }, 1000);
+  }, 200);
 }
 
 // переход после паузы: к следующему упражнению или к новому кругу
@@ -541,28 +616,33 @@ function afterPause() {
   }
   run.count = 0;
   run.phase = "count";
-  render();
-  nextBeatAt = performance.now();
-  beat();
+  scheduleBeatAt(performance.now());
 }
 
 // вся тренировка завершена
 function finish() {
   stopTimers();
+  const withSound = session.sound;
   run.active = false;
   run.phase = "idle";
   run.count = 0;
   run.exIndex = 0;
   run.round = 0;
+  session = null;
   releaseWakeLock();
   render();
-  if (audioCtx) { playClick(true); setTimeout(() => playClick(true), 140); }
+  haptic();
+  if (withSound) {
+    scheduleClick(performance.now(), true);
+    setTimeout(() => scheduleClick(performance.now(), true), 140);
+  }
 }
 
-// снятие всех таймеров
+// снятие всех таймеров и запланированного щелчка
 function stopTimers() {
   if (beatTimer) { clearTimeout(beatTimer); beatTimer = null; }
   if (pauseTimer) { clearInterval(pauseTimer); pauseTimer = null; }
+  cancelPendingClick();
 }
 
 // старт или пауза
@@ -576,23 +656,26 @@ function toggleStart() {
     return;
   }
   if (!audioCtx) {
+    // playback-сессия: на iOS 17+ звук не глушится переключателем беззвучного режима
+    if ("audioSession" in navigator) navigator.audioSession.type = "playback";
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   }
-  if (audioCtx.state === "suspended") audioCtx.resume();
+  // resume покрывает и suspended, и interrupted после звонка или Siri
+  if (audioCtx.state !== "running") audioCtx.resume();
 
   run.active = true;
   acquireWakeLock();
 
   if (run.phase === "idle") {
+    session = readSettings();   // настройки фиксируются на всю тренировку
+    session.names = EXERCISES.filter((_, i) => session.exercises[i]);
     run.round = 1;
     run.exIndex = 0;
     run.count = 0;
     run.phase = "count";
-    nextBeatAt = performance.now();
-    beat();
+    scheduleBeatAt(performance.now());
   } else if (run.phase === "count") {
-    nextBeatAt = performance.now();
-    beat();
+    scheduleBeatAt(performance.now());
   } else if (run.phase === "pauseExercise") {
     startPause("pauseExercise", run.pauseLeft);
   } else if (run.phase === "pauseRound") {
@@ -609,13 +692,16 @@ function reset() {
   run.count = 0;
   run.exIndex = 0;
   run.round = 0;
+  session = null;
   releaseWakeLock();
   render();
 }
 
-// повторный захват удержания экрана при возврате во вкладку
+// возврат во вкладку: вернуть удержание экрана и разбудить аудио после прерывания
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible" && run.active) acquireWakeLock();
+  if (document.visibilityState !== "visible") return;
+  if (run.active) acquireWakeLock();
+  if (audioCtx && audioCtx.state !== "running") audioCtx.resume();
 });
 
 // пружинный отскок значения рядом со слайдером
@@ -640,14 +726,15 @@ function popValue(node) {
 el.startBtn.addEventListener("click", toggleStart);
 el.resetBtn.addEventListener("click", reset);
 
-// инициализация
+// инициализация: loadSettings сам отрисовывает список упражнений
 loadSettings();
-renderExList();
 render();
 
 // регистрация service worker для офлайн-работы
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));
+  window.addEventListener("load", () =>
+    navigator.serviceWorker.register("./sw.js").catch((err) => console.warn("service worker не зарегистрирован", err))
+  );
 }
 </script>
 </body>

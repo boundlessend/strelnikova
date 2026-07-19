@@ -1,5 +1,5 @@
 // service worker для офлайн-работы
-const CACHE = "strelnikova-v4";
+const CACHE = "strelnikova-v5";
 const ASSETS = [
   "./",
   "./index.html",
@@ -7,6 +7,7 @@ const ASSETS = [
   "./icon-180.png",
   "./icon-192.png",
   "./icon-512.png",
+  "./icon-maskable.png",
 ];
 
 self.addEventListener("install", (e) => {
@@ -35,8 +36,12 @@ self.addEventListener("fetch", (e) => {
     e.respondWith(
       fetch(e.request)
         .then((resp) => {
-          const copy = resp.clone();
-          caches.open(CACHE).then((c) => c.put("./index.html", copy));
+          // кэшируется под ключом самого запроса, иначе офлайн-навигация на "./"
+          // продолжала бы отдавать копию времени установки; страницы ошибок не кэшируются
+          if (resp.ok) {
+            const copy = resp.clone();
+            caches.open(CACHE).then((c) => c.put(e.request, copy));
+          }
           return resp;
         })
         .catch(() => caches.match(e.request).then((r) => r || caches.match("./index.html")))
