@@ -1,5 +1,7 @@
 // service worker для офлайн-работы
-const CACHE = "strelnikova-v6";
+const CACHE = "strelnikova-v7";
+// сколько ждать сеть при загрузке HTML, прежде чем откатиться на кэш
+const NAV_TIMEOUT_MS = 3000;
 const ASSETS = [
   "./",
   "./index.html",
@@ -33,19 +35,26 @@ self.addEventListener("fetch", (e) => {
     (e.request.destination === "document");
 
   if (isNavigation) {
-    e.respondWith(
-      fetch(e.request)
-        .then((resp) => {
-          // кэшируется под ключом самого запроса, иначе офлайн-навигация на "./"
-          // продолжала бы отдавать копию времени установки; страницы ошибок не кэшируются
-          if (resp.ok) {
-            const copy = resp.clone();
-            caches.open(CACHE).then((c) => c.put(e.request, copy));
-          }
-          return resp;
-        })
-        .catch(() => caches.match(e.request).then((r) => r || caches.match("./index.html")))
-    );
+    e.respondWith((async () => {
+      // network-first с таймаутом: на еле живой сети старт не висит до сетевого таймаута
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), NAV_TIMEOUT_MS);
+      try {
+        const resp = await fetch(e.request, { signal: ctrl.signal });
+        clearTimeout(timer);
+        // кэшируется под ключом самого запроса, иначе офлайн-навигация на "./"
+        // продолжала бы отдавать копию времени установки; страницы ошибок не кэшируются
+        if (resp.ok) {
+          const copy = resp.clone();
+          caches.open(CACHE).then((c) => c.put(e.request, copy));
+        }
+        return resp;
+      } catch (_) {
+        clearTimeout(timer);
+        const cached = await caches.match(e.request);
+        return cached || caches.match("./index.html");
+      }
+    })());
     return;
   }
 
