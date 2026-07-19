@@ -51,6 +51,28 @@ test("тренировка из одного упражнения доходит
   await page.click("#startBtn");
   await expect(page.locator("#phase")).toHaveText("Ладошки");
   // 8 счётов по 400 мс: тренировка завершается сама и возвращается в исходное состояние
-  await expect(page.locator("#phase")).toHaveText("готов", { timeout: 8000 });
+  await expect(page.locator("#phase")).toHaveText("тренировка завершена", { timeout: 8000 });
+  await expect(page.locator("#phase")).toHaveText("готов", { timeout: 5000 });
   await expect(page.locator("#startBtn")).toHaveText("Старт");
+});
+
+test("паузы между упражнениями и кругами", async ({ page }) => {
+  // pauseRoundSec кратен 5: ползунок со step=5 снапит другие значения (2 -> 0, пауза бы пропустилась)
+  await seed(page, {
+    bpm: 150, counts: 8, rounds: 2, pauseExSec: 2, pauseRoundSec: 5, sound: false, voice: false,
+    exercises: [true, true, false, false, false, false, false, false, false, false, false, false],
+  });
+  await page.goto("/");
+  await page.click("#startBtn");
+  await expect(page.locator("#phase")).toHaveText("Ладошки");
+
+  await expect(page.locator("#phase")).toHaveText("пауза", { timeout: 6000 });
+  await expect(page.locator("#seriesInfo")).toHaveText("дальше: Погончики");
+  await expect(page.locator("#phase")).toHaveText("Погончики", { timeout: 4000 });
+
+  await expect(page.locator("#phase")).toHaveText("отдых между кругами", { timeout: 6000 });
+  await expect(page.locator("#phase")).toHaveText("Ладошки", { timeout: 8000 });
+  await expect(page.locator("#seriesInfo")).toHaveText(/круг 2\/2/);
+
+  await expect(page.locator("#phase")).toHaveText("тренировка завершена", { timeout: 12000 });
 });
