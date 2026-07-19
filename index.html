@@ -3,15 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
-<title>Стрельникова</title>
+<title>Дыхание · гимнастика Стрельниковой</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f2f7">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#16161a">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Дыхание">
 <link rel="apple-touch-icon" href="./icon-180.png">
-<link rel="icon" href="./icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
 <style>
   :root {
@@ -19,7 +20,7 @@
     --bg-bot: #e8e8ef;
     --card: rgba(255, 255, 255, 0.72);
     --label: #1c1c1e;
-    --label-2: #8e8e93;
+    --label-2: #6c6c70;   /* темнее системного серого iOS ради контраста WCAG AA на белом */
     --blue: #007aff;
     --green: #34c759;
     --orange: #ff9500;
@@ -152,11 +153,14 @@
   #resetBtn { background: var(--btn2); color: var(--blue); }
 
   /* настройки в стиле сгруппированных iOS-таблиц */
-  details { max-width: 456px; width: 100%; margin: 0 auto; padding: 0 18px 22px; }
+  details { max-width: 456px; width: 100%; margin: 0 auto; padding: 0 18px 22px; transition: opacity .3s ease; }
+  /* во время тренировки настройки зафиксированы: блок пригашен и неактивен */
+  details[inert] { opacity: .45; }
   summary { text-align: center; color: var(--blue); font-size: 15px; font-weight: 500; padding: 8px; cursor: pointer; list-style: none; }
   summary::-webkit-details-marker { display: none; }
-  summary::after { content: "Настройки"; }
-  details[open] summary::after { content: "Готово"; font-weight: 600; }
+  summary .when-open { display: none; font-weight: 600; }
+  details[open] summary .when-closed { display: none; }
+  details[open] summary .when-open { display: inline; }
   .group { background: var(--group-bg); border-radius: 14px; overflow: hidden; margin-top: 10px; box-shadow: 0 6px 20px -14px rgba(60, 70, 90, 0.4); }
   .group-title { font-size: 13px; color: var(--label-2); text-transform: uppercase; letter-spacing: .3px; padding: 16px 6px 2px; }
   .row { padding: 14px 16px; border-bottom: 0.5px solid var(--sep); }
@@ -215,7 +219,7 @@
   </div>
 
   <details>
-    <summary></summary>
+    <summary><span class="when-closed">Настройки</span><span class="when-open">Готово</span></summary>
 
     <div class="group-title">Ритм и объём</div>
     <div class="group">
@@ -319,6 +323,7 @@ const run = {
 
 let beatTimer = null;
 let pauseTimer = null;
+let doneTimer = null;   // возврат из "тренировка завершена" в "готов"
 let nextBeatAt = 0;
 let audioCtx = null;
 let wakeLock = null;
@@ -333,6 +338,7 @@ const el = {
   startBtn: document.getElementById("startBtn"),
   resetBtn: document.getElementById("resetBtn"),
   exList: document.getElementById("exList"),
+  details: document.querySelector("details"),
   bpm: document.getElementById("bpm"),
   counts: document.getElementById("counts"),
   rounds: document.getElementById("rounds"),
@@ -527,6 +533,7 @@ function render() {
   }
   el.startBtn.textContent = run.active ? "Пауза" : (run.phase === "idle" ? "Старт" : "Продолжить");
   el.startBtn.classList.toggle("running", run.active);
+  el.details.inert = run.phase !== "idle";   // настройки зафиксированы до конца тренировки
 }
 
 // пружинный отскок большой цифры на каждый счёт
@@ -635,6 +642,12 @@ function finish() {
   session = null;
   releaseWakeLock();
   render();
+  el.phase.textContent = "тренировка завершена";
+  bumpPhase();
+  doneTimer = setTimeout(() => {
+    doneTimer = null;
+    if (run.phase === "idle") render();   // если за это время не начали новую тренировку
+  }, 2500);
   haptic();
   if (withSound) {
     scheduleClick(performance.now(), true);
@@ -646,17 +659,23 @@ function finish() {
 function stopTimers() {
   if (beatTimer) { clearTimeout(beatTimer); beatTimer = null; }
   if (pauseTimer) { clearInterval(pauseTimer); pauseTimer = null; }
+  if (doneTimer) { clearTimeout(doneTimer); doneTimer = null; }
   cancelPendingClick();
+}
+
+// пауза тренировки без сброса позиции
+function pauseRun() {
+  run.active = false;
+  stopTimers();
+  releaseWakeLock();
+  render();
 }
 
 // старт или пауза
 function toggleStart() {
   haptic();
   if (run.active) {
-    run.active = false;
-    stopTimers();
-    releaseWakeLock();
-    render();
+    pauseRun();
     return;
   }
   if (!audioCtx) {
@@ -671,15 +690,18 @@ function toggleStart() {
   acquireWakeLock();
 
   if (run.phase === "idle") {
+    el.details.open = false;
     session = readSettings();   // настройки фиксируются на всю тренировку
     session.names = EXERCISES.filter((_, i) => session.exercises[i]);
+    if (session.names.length === 0) session.names = [...EXERCISES];   // битое хранилище: пустой круг заменяется полным
     run.round = 1;
     run.exIndex = 0;
     run.count = 0;
     run.phase = "count";
     scheduleBeatAt(performance.now());
   } else if (run.phase === "count") {
-    scheduleBeatAt(performance.now());
+    // продолжение: следующий счёт через полный интервал, иначе пауза-продолжить проматывает счёт
+    scheduleBeatAt(performance.now() + 60000 / session.bpm);
   } else if (run.phase === "pauseExercise") {
     startPause("pauseExercise", run.pauseLeft);
   } else if (run.phase === "pauseRound") {
@@ -705,9 +727,13 @@ function reset() {
 // в установленном на главный экран приложении зум запрещает сам viewport
 document.addEventListener("gesturestart", (e) => e.preventDefault());
 
+// сворачивание: авто-пауза, в фоне таймеры троттлятся и звук молчит;
 // возврат во вкладку: вернуть удержание экрана и разбудить аудио после прерывания
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState !== "visible") return;
+  if (document.visibilityState !== "visible") {
+    if (run.active) pauseRun();
+    return;
+  }
   if (run.active) acquireWakeLock();
   if (audioCtx && audioCtx.state !== "running") audioCtx.resume();
 });
